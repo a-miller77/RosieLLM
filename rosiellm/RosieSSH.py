@@ -17,7 +17,6 @@ load_dotenv()
 USERNAME = os.getenv('USERNAME')
 ADDRESS = os.getenv('ADDRESS')
 
-
 class RosieSSH:
     """
     A class to manage SSH connections and execute commands on Rosie.

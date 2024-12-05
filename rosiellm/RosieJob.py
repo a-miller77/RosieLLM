@@ -1,11 +1,11 @@
-from RosieSSH import RosieSSH
+from rosiellm.RosieSSH import RosieSSH
 import tempfile
 import time
 import os
 import textwrap
 import uuid
 
-from typing import Tuple, Literal
+from typing import Tuple
 
 class JobManager:
     def __init__(self, job_name='RosieLLM', rosie_ssh: RosieSSH = None):
@@ -106,11 +106,11 @@ class JobManager:
             'nodes': 1,
             'gpus': 2,
             'cpus_per_gpu': 2,
-            'out_file': 'llm_out.txt',
+            'out_file': 'RosieLLM_out.txt',
             'days': 0,
             'hours': 3,
             'minutes': 30,
-            "container": "RosieLLM.sif",
+            "container": "data/containers/msoe-tensorflow-24.05-tf2-py3.sif",
             'model_name': "NousResearch/Meta-Llama-3-8B-Instruct",
             'dtype': "half",
             'max_model_len': "2048",

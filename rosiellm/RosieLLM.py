@@ -1,8 +1,7 @@
-from RosieSSH import RosieSSH
-from RosieSSH import RosieAuth
-from RosieJob import JobManager
+from rosiellm.RosieSSH import RosieSSH
+from rosiellm.RosieJob import JobManager
 from openai import OpenAI
-from typing import Tuple, Literal, Union
+from typing import Literal, Union
 import random
 
 MANAGEMENT_NODES = ['dh-mgmt1', 'dh-mgmt2', 'dh-mgmt3', 'dh-mgmt4']

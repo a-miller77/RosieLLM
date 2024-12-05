@@ -60,14 +60,18 @@ class RosieSSH:
             paramiko.SSHException: If there is any error while connecting to the remote server.
         """
         # Use paramiko to establish an SSH connection
-        self.ssh_client = paramiko.SSHClient()
-        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.ssh_client.connect(self.ssh_host, username=self.ssh_username, password=self.rosie_auth.get_rosie_password())
-        self.channel = self.ssh_client.invoke_shell()
+        try:
+            self.ssh_client = paramiko.SSHClient()
+            self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self.ssh_client.connect(self.ssh_host, username=self.ssh_username, password=self.rosie_auth.get_rosie_password())
+            self.channel = self.ssh_client.invoke_shell()
 
-        self.instance_client = paramiko.SSHClient()
-        self.instance_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self.instance_client.connect(self.ssh_host, username=self.ssh_username, password=self.rosie_auth.get_rosie_password())
+            self.instance_client = paramiko.SSHClient()
+            self.instance_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self.instance_client.connect(self.ssh_host, username=self.ssh_username, password=self.rosie_auth.get_rosie_password())
+        except paramiko.SSHException as e:
+            self.close()
+            raise paramiko.SSHException(f"An error occurred while connecting to {self.ssh_host}: {e}")
 
         # Flush the initial banner
         self.flush_buffer()
@@ -104,7 +108,7 @@ class RosieSSH:
         error = stderr.read().decode(errors='ignore')
         return output + error
         
-    def execute_command(self, command: str, streaming: bool = False) -> Optional[str]:
+    def execute_command(self, command: str, streaming: bool = False, timeout=20) -> Optional[str]:
         """
         Executes a command on the remote server through an SSH tunnel using Paramiko.
         Args:
@@ -137,7 +141,7 @@ class RosieSSH:
             prompt_detected = False
             
             while not prompt_detected:
-                self.wait_for_ready_channel()
+                self.wait_for_ready_channel(timeout=timeout)
                 if self.channel.recv_ready():
                     response = self.channel.recv(buffer_size).decode(errors='ignore')
                     last_response = output[-1]
@@ -247,7 +251,6 @@ class RosieSSH:
         while not self.__channel_is_ready():
             if time.time() - start > timeout:
                 raise TimeoutError("Timeout waiting for the channel to be ready.")
-            
 
     def __channel_is_ready(self, timeout: int = 1) -> bool:
         """
@@ -296,7 +299,9 @@ class RosieAuth:
         self.password = None
 
         if password:
-            self.set_credentials(username, password)
+            self.__set_credentials(username, password)
+        else:
+            self.__set_credentials(username, getpass(f"Enter the Rosie Password for {username}: "))
 
     def __set_credentials(self, username: str, password: str) -> None:
         """
@@ -305,8 +310,9 @@ class RosieAuth:
             username (str): The username for Rosie authentication.
             password (str): The password to be encrypted and stored.
         """
-        credentials = f"{username}:{password}".encode()
-        self.auth_token = self.cipher.encrypt(base64.b64encode(credentials))
+        credentials = f"{username}:{password}"
+        encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+        self.auth_token = self.cipher.encrypt(encoded_credentials.encode())
         self.password = self.cipher.encrypt(password.encode())
 
     def get_rosie_auth(self) -> str:
@@ -319,7 +325,7 @@ class RosieAuth:
         """
         if not self.auth_token:
             raise ValueError("Authentication token is not set.")
-        return base64.b64decode(self.cipher.decrypt(self.auth_token)).decode()
+        return self.cipher.decrypt(self.auth_token).decode("utf-8")
 
     def get_rosie_password(self) -> str:
         """

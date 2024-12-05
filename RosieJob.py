@@ -24,8 +24,8 @@ class JobManager:
         self.BASE_URL = "/node/{node_url}.hpc.msoe.edu/{port}"
     
     def __del__(self):
-        self.rosie_ssh.cancel()
-        self.rosie_ssh.close()
+        self.rosie_ssh.cancel() #NOTE: This doesn't currently shut down the server
+        self.rosie_ssh.__del__()
 
     def launch_vllm_server(self) -> None:
         """
@@ -42,11 +42,10 @@ class JobManager:
             self.rosie_ssh.copy_file_to_remote(local_script_path, remote_script_path)
             os.remove(local_script_path)
 
-            try:
-                # Execute the sbatch command on the remote server
-                self.rosie_ssh.execute_command(f'sbatch {remote_script_path}', timeout=3)
-            except TimeoutError:
-                self.node_url = self.get_node_url(self.job_name)
+            # Execute the sbatch command on the remote server
+            self.rosie_ssh.execute_command(f'sbatch {remote_script_path}', streaming=True)
+            self.rosie_ssh.execute_command(f'rm {remote_script_path}')
+            self.node_url = self.get_node_url(self.job_name)
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -89,9 +88,8 @@ class JobManager:
         while node_url is None and time.time() - start < timeout:
             # self.rosie_ssh.wait_for_ready_channel(timeout=timeout)
             squeue_out = self.rosie_ssh.execute_instance_command(get_job_url_command)
-            
             if squeue_out and 'dh' in squeue_out and 'RUNNING' in squeue_out:
-                current_jobs = squeue_out.split('\n')[1:]
+                current_jobs = squeue_out.strip().split('\n')[1:]
                 node_url = current_jobs[-1].split(' ')[0]
             else:
                 time.sleep(0.5)
@@ -104,9 +102,9 @@ class JobManager:
     def create_llm_sbatch(self) -> str:
         self.config_dict = {
             'name': "RosieLLM",
-            'partition': 'dgx',
+            'partition': 'teaching',
             'nodes': 1,
-            'gpus': 1,
+            'gpus': 2,
             'cpus_per_gpu': 2,
             'out_file': 'llm_out.txt',
             'days': 0,
@@ -133,7 +131,7 @@ class JobManager:
             f"--dtype {cfg['dtype']} "
             f"-tp {cfg['gpus']} "
             f"--max-model-len {cfg['max_model_len']} "
-            f'--download-dir {cfg['download_dir']} '
+            f"--download-dir {cfg['download_dir']} "
             f"--host {cfg['host']} "
             f"--port {cfg['port']} "
             # f"--api-key {cfg["api_key"]} "

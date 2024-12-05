@@ -32,7 +32,7 @@ class RosieLLM:
         self.manager.launch_vllm_server()
 
         vllm_route = self.manager.BASE_URL.format(node_url=self.manager.node_url, port=self.manager.PORT) #TODO use a getter
-        self.rosie_web_path = f"https://dh-ood.hpc.msoe.edu{vllm_route}/"
+        self.rosie_web_path = f"https://dh-ood.hpc.msoe.edu{vllm_route}/v1"
 
         self.client = OpenAI(
             api_key=self.manager.token,

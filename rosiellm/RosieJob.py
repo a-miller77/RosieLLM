@@ -3,7 +3,7 @@ import tempfile
 import time
 import os
 import textwrap
-import uuid
+import secrets
 
 from typing import Tuple
 
@@ -18,7 +18,7 @@ class JobManager:
             self.rosie_ssh = RosieSSH()
             self.rosie_ssh.connect()
         self.user = self.rosie_ssh.ssh_username
-        self.token = str(uuid.uuid4()) #look into jwt(?)
+        self.token = secrets.token_urlsafe() #look into jwt(?)
         self.PORT = 1234 #TODO scan for open port
         self.node_url = None
         self.BASE_URL = "/node/{node_url}.hpc.msoe.edu/{port}"
@@ -43,6 +43,7 @@ class JobManager:
             os.remove(local_script_path)
 
             # Execute the sbatch command on the remote server
+            #this current implementation causes the server to not be able to be shut down later
             self.rosie_ssh.execute_command(f'sbatch {remote_script_path}', streaming=True)
             self.rosie_ssh.execute_command(f'rm {remote_script_path}')
             self.node_url = self.get_node_url(self.job_name)
@@ -52,7 +53,7 @@ class JobManager:
 
     def create_temp_sbatch_script(self, sbatch_script: str) -> Tuple[str, str]:
         try:
-            # Normalize line endings to Unix style
+            # Normalize line endings to Unix style NOTE: Will not work on MacOS
             sbatch_script_unix = sbatch_script.replace('\r\n', '\n').replace('\r', '\n')
 
             # Create a temporary SBATCH script locally with Unix line endings
@@ -62,7 +63,7 @@ class JobManager:
                 local_script_path = temp_file.name
 
             # Define the remote script path
-            remote_script_path = f'/home/{self.user}/{os.path.basename(local_script_path)}'
+            remote_script_path = f'/data/ai_club/RosieLLM/{os.path.basename(local_script_path)}' 
             return local_script_path, remote_script_path
 
         except Exception as e:
@@ -106,19 +107,19 @@ class JobManager:
             'nodes': 1,
             'gpus': 2,
             'cpus_per_gpu': 2,
-            'out_file': 'RosieLLM_out.txt',
+            'out_file': f'/data/ai_club/RosieLLM/out/{self.user}_out.txt',
             'days': 0,
-            'hours': 3,
+            'hours': 0,
             'minutes': 30,
-            #"container": "/data/containers/msoe-tensorflow-23.05-tf2-py3.sif",
-            'container': "RosieLLM.sif",
+            'container': "/data/ai_club/RosieLLM/RosieLLM.sif",
             'model_name': "NousResearch/Meta-Llama-3-8B-Instruct",
             'dtype': "half",
             'max_model_len': "2048",
-            'download_dir': "~/.cache/vllm", #TODO: Change to tmp dir
+            'download_dir': "/data/ai_club/RosieLLM/models", #TODO: Change to tmp dir
             'host': "0.0.0.0",
             'port': str(self.PORT),
             'api_key': self.token,
+            'middleware': 'proxy_middleware.proxy_authentication', #TODO: remove once proxy server implemented
             'vllm_base_url': self.BASE_URL.format(node_url="$SLURMD_NODENAME", port=self.PORT)
         }
                 
@@ -131,12 +132,13 @@ class JobManager:
             f"--model {cfg['model_name']} "
             f"--dtype {cfg['dtype']} "
             f"-tp {cfg['gpus']} "
-            f"--max-model-len {cfg['max_model_len']} "
+            # f"--max-model-len {cfg['max_model_len']} " #is this necessary?
             f"--download-dir {cfg['download_dir']} "
             f"--host {cfg['host']} "
             f"--port {cfg['port']} "
             # f"--api-key {cfg['api_key']} " #NOTE: api-key auth with vLLM is not currently working
-            f"--root-path {cfg['vllm_base_url']}"
+            f"--root-path {cfg['vllm_base_url']} "
+            f"--middleware {cfg['middleware']}"
             # f"--enable-cors "
             # f"--log-level INFO "
             # f"--num-workers 4 "
@@ -160,18 +162,8 @@ f'''            #!/bin/bash
             container="{cfg['container']}"
             
             singularity exec --nv -B /data:/data -B /data:/scratch/data ${{container}} bash -c '
-            cd /home/$USER
-            if ! [ -d venv ]; then
-                python3 -m venv venv
-            fi
-
-            source /home/$USER/venv/bin/activate
-
-            pip install vllm
-
-            echo "virtual env activated: $VIRTUAL_ENV"
-            echo -e "dependencies loaded\\n\\n"
-
+            cd /data/ai_club/RosieLLM
+            export ROSIE_VLLM_API_KEY={self.token}
             {vllm_command}
             '
             '''

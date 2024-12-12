@@ -18,13 +18,13 @@ class JobManager:
             self.rosie_ssh = RosieSSH()
             self.rosie_ssh.connect()
         self.user = self.rosie_ssh.ssh_username
-        self.token = str(uuid.uuid4())
-        self.PORT = 1234
+        self.token = str(uuid.uuid4()) #look into jwt(?)
+        self.PORT = 1234 #TODO scan for open port
         self.node_url = None
         self.BASE_URL = "/node/{node_url}.hpc.msoe.edu/{port}"
     
     def __del__(self):
-        self.rosie_ssh.cancel() #NOTE: This doesn't currently shut down the server
+        self.rosie_ssh.cancel() #TODO: This doesn't currently shut down the server
         self.rosie_ssh.__del__()
 
     def launch_vllm_server(self) -> None:
@@ -110,11 +110,12 @@ class JobManager:
             'days': 0,
             'hours': 3,
             'minutes': 30,
-            "container": "data/containers/msoe-tensorflow-24.05-tf2-py3.sif",
+            #"container": "/data/containers/msoe-tensorflow-23.05-tf2-py3.sif",
+            'container': "RosieLLM.sif",
             'model_name': "NousResearch/Meta-Llama-3-8B-Instruct",
             'dtype': "half",
             'max_model_len': "2048",
-            'download_dir': "~/.cache/vllm",
+            'download_dir': "~/.cache/vllm", #TODO: Change to tmp dir
             'host': "0.0.0.0",
             'port': str(self.PORT),
             'api_key': self.token,
@@ -134,7 +135,7 @@ class JobManager:
             f"--download-dir {cfg['download_dir']} "
             f"--host {cfg['host']} "
             f"--port {cfg['port']} "
-            # f"--api-key {cfg["api_key"]} "
+            # f"--api-key {cfg['api_key']} " #NOTE: api-key auth with vLLM is not currently working
             f"--root-path {cfg['vllm_base_url']}"
             # f"--enable-cors "
             # f"--log-level INFO "
@@ -159,11 +160,12 @@ f'''            #!/bin/bash
             container="{cfg['container']}"
             
             singularity exec --nv -B /data:/data -B /data:/scratch/data ${{container}} bash -c '
+            cd /home/$USER
             if ! [ -d venv ]; then
                 python3 -m venv venv
             fi
 
-            source venv/bin/activate
+            source /home/$USER/venv/bin/activate
 
             pip install vllm
 
@@ -171,7 +173,6 @@ f'''            #!/bin/bash
             echo -e "dependencies loaded\\n\\n"
 
             {vllm_command}
-            echo "Server started"
             '
             '''
         )

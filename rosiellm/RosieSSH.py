@@ -44,7 +44,7 @@ class RosieSSH:
         self.ssh_client = None
         self.channel = None
 
-        # used for individual commands
+        # used for individual, one off commands
         self.instance_client = None
 
         self.lock = Lock()
@@ -119,6 +119,8 @@ class RosieSSH:
             paramiko.SSHException: If the SSH connection is not established, 
                 or if there is any error while executing the command.
         """
+        #NOTE: this works for the most part, has not been tested extensively
+        # this method should probably be changed in the future
         with self.lock:
             if not self.channel:
                 raise paramiko.SSHException("SSH connection is not established. Call connect() method first.")

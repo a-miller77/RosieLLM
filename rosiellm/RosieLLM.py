@@ -9,6 +9,7 @@ MANAGEMENT_NODES = ['dh-mgmt1', 'dh-mgmt2', 'dh-mgmt3', 'dh-mgmt4']
 class RosieLLM:
     def __init__(self,
                  job_name: str = 'RosieLLM',
+                 model: str = ..., #TODO trickle this down to other objects
                  rosie_username: str = None,
                  management_node: Literal[
                                     'dh-mgmt1',
@@ -18,11 +19,12 @@ class RosieLLM:
                                 ] = None,
                  return_openai_client: bool = True
                  ) -> Union['RosieLLM', OpenAI]:
+        
         if not management_node or management_node not in MANAGEMENT_NODES:
             # Choose a random management node
             management_node = random.choice(MANAGEMENT_NODES)
         self.rosie_ssh_address = f"{management_node}.hpc.msoe.edu"
-        # RosieSSH assumes the address can be provided from .env which isn't compatible here
+        # NOTE: RosieSSH assumes the address can be provided from .env which isn't compatible here
         self.rosie_ssh = RosieSSH(rosie_username, self.rosie_ssh_address)
         self.manager = JobManager(job_name, self.rosie_ssh)
         self.user = self.manager.user
@@ -34,10 +36,11 @@ class RosieLLM:
         self.rosie_web_path = f"https://dh-ood.hpc.msoe.edu{vllm_route}/v1"
 
         self.client = OpenAI(
-            api_key=self.manager.token,
+            api_key="Not used",
             base_url=self.rosie_web_path,
             default_headers={
-                'Authorization': f'Basic {self.rosie_auth.get_rosie_auth()}'
+                'Authorization': f'Basic {self.rosie_auth.get_rosie_auth()}',
+                # 'Proxy-Authorization': f'Bearer {self.manager.token}' #NOTE: This currently doesn't work, swap to FastAPI forwarder for AUTH
             }
         )
 
@@ -48,6 +51,7 @@ class RosieLLM:
             self._is_client_only = False
 
     def __getattr__(self, name):
+        #treat any request of the RosieLLM obj as if it were a request of the OpenAI obj
         if self._is_client_only:
             return getattr(self.client, name)
         else:

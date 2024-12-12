@@ -44,6 +44,8 @@ class RosieLLM:
             base_url=f"{self.rosie_web_path}/v1",
             default_headers={
                 'Authorization': f'Basic {self.rosie_auth.get_rosie_auth()}',
+                #NOTE: swap to FastAPI forwarder for AUTH at a later date
+                'X-Authorization': f'Bearer {self.manager.token}'
             }
         )
         self._is_client_only = return_openai_client # Return only the client if requested

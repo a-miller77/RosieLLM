@@ -10,6 +10,7 @@ from getpass import getpass
 from typing import Tuple, Optional
 
 import paramiko
+from socket import gaierror
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
@@ -71,7 +72,9 @@ class RosieSSH:
         except paramiko.SSHException as e:
             self.close()
             raise paramiko.SSHException(f"An error occurred while connecting to {self.ssh_host}: {e}")
-
+        except gaierror as e:
+            self.close()
+            raise paramiko.SSHException(f"The SSH address is either incorrect or GlobalProtect isn't connected: {e}")
         # Flush the initial banner
         self.flush_buffer()
 

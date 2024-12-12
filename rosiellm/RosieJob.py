@@ -24,7 +24,7 @@ class JobManager:
         self.BASE_URL = "/node/{node_url}.hpc.msoe.edu/{port}"
     
     def __del__(self):
-        self.rosie_ssh.cancel() #TODO: This doesn't currently shut down the server
+        self.rosie_ssh.execute_instance_command(f'scancel -n {self.job_name}')
         self.rosie_ssh.__del__()
 
     def launch_vllm_server(self) -> None:
@@ -49,6 +49,7 @@ class JobManager:
             self.node_url = self.get_node_url(self.job_name)
 
         except Exception as e:
+            #TODO: improve(?)
             print(f"An error occurred: {e}")
 
     def create_temp_sbatch_script(self, sbatch_script: str) -> Tuple[str, str]:
@@ -109,8 +110,8 @@ class JobManager:
             'cpus_per_gpu': 2,
             'out_file': f'/data/ai_club/RosieLLM/out/{self.user}_out.txt',
             'days': 0,
-            'hours': 0,
-            'minutes': 30,
+            'hours': 3,
+            'minutes': 0,
             'container': "/data/ai_club/RosieLLM/RosieLLM.sif",
             'model_name': "NousResearch/Meta-Llama-3-8B-Instruct",
             'dtype': "half",
@@ -136,7 +137,6 @@ class JobManager:
             f"--download-dir {cfg['download_dir']} "
             f"--host {cfg['host']} "
             f"--port {cfg['port']} "
-            # f"--api-key {cfg['api_key']} " #NOTE: api-key auth with vLLM is not currently working
             f"--root-path {cfg['vllm_base_url']} "
             f"--middleware {cfg['middleware']}"
             # f"--enable-cors "

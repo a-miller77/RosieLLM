@@ -56,7 +56,7 @@ class RosieLLM:
         if self.isRunning:
             return self._http_client
         else:
-            raise ConnectionError("Server is not running.")
+            raise ConnectionError("Server is not running. Server launch can be slow, try again in a moment.")
         
     #NOTE: Should there be a setter?
 

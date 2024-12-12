@@ -27,4 +27,4 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["rosiellm"]
+where = ["."]

@@ -19,11 +19,11 @@ classifiers = [
 ]
 
 dependencies = [
-    "openai>=0.10.2,<1.0",
-    "paramiko==2.7.2",
-    "cryptography==3.4.7",
-    "python-dotenv==0.19.2",
-    "requests==2.26.0",
+    "openai>=1.57.3",
+    "paramiko>=3.5.0",
+    "cryptography>=44.0.0",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
 ]
 
 [tool.setuptools.packages.find]

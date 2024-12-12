@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+setup.py
+rosiellm/RosieJob.py
+rosiellm/RosieLLM.py
+rosiellm/RosieSSH.py
+rosiellm/__init__.py
+rosiellm.egg-info/PKG-INFO
+rosiellm.egg-info/SOURCES.txt
+rosiellm.egg-info/dependency_links.txt
+rosiellm.egg-info/requires.txt
+rosiellm.egg-info/top_level.txt

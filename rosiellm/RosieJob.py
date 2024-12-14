@@ -23,9 +23,9 @@ class JobManager:
         self.node_url = None
         self.BASE_URL = "/node/{node_url}.hpc.msoe.edu/{port}"
     
-    def __del__(self):
-        self.rosie_ssh.execute_instance_command(f'scancel -n {self.job_name}')
-        self.rosie_ssh.__del__()
+    # def __del__(self):
+        # self.rosie_ssh.execute_instance_command(f'scancel -n {self.job_name}')
+        # self.rosie_ssh.__del__()
 
     def launch_vllm_server(self) -> None:
         """
@@ -176,8 +176,9 @@ f'''            #!/bin/bash
             echo "Directory: $(pwd) -> $(cd /data/ai_club/RosieLLM && pwd)"
             
             # Set environment variables
+            export PYTHONPATH=/data/ai_club/RosieLLM:$PYTHONPATH &&
             export ROSIE_VLLM_API_KEY={self.token} &&
-            echo "Added ROSIE_VLLM_API_KEY to environment variables."
+            echo "Added API_KEY to environment variables and updated PYTHONPATH"
             
             # Run the vLLM server
             {vllm_command}

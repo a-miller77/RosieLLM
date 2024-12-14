@@ -88,5 +88,5 @@ class RosieLLM:
         else:
             raise AttributeError(f"'RosieLLM' object has no attribute '{name}'")
 
-    def __del__(self):
-        self.manager.__del__()
+    # def __del__(self):
+        # self.manager.__del__()

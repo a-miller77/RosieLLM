@@ -41,11 +41,12 @@ class JobManager:
             # Copy the SBATCH script directly to the remote server
             self.rosie_ssh.copy_file_to_remote(local_script_path, remote_script_path)
             os.remove(local_script_path)
+            self.rosie_ssh.execute_command(f'chmod +x {remote_script_path}')
 
             # Execute the sbatch command on the remote server
             #this current implementation causes the server to not be able to be shut down later
             self.rosie_ssh.execute_command(f'sbatch {remote_script_path}', streaming=True)
-            self.rosie_ssh.execute_command(f'rm {remote_script_path}')
+            # self.rosie_ssh.execute_command(f'rm {remote_script_path}')
             self.node_url = self.get_node_url(self.job_name)
 
         except Exception as e:

@@ -163,8 +163,23 @@ f'''            #!/bin/bash
             container="{cfg['container']}"
             
             singularity exec --nv -B /data:/data -B /data:/scratch/data ${{container}} bash -c '
-            cd /data/ai_club/RosieLLM
-            export ROSIE_VLLM_API_KEY={self.token}
+            # Ensure Python dependencies are installed
+            if ! python -c "import vllm" 2>/dev/null; then
+                echo "vllm not found. Installing..."
+                python -m pip install --user --upgrade pip vllm
+            else
+                echo "vllm already installed."
+            fi &&
+            
+            # Change directory to the project root
+            echo "Changing directory to project root..."
+            echo "Directory: $(pwd) -> $(cd /data/ai_club/RosieLLM && pwd)"
+            
+            # Set environment variables
+            export ROSIE_VLLM_API_KEY={self.token} &&
+            echo "Added ROSIE_VLLM_API_KEY to environment variables."
+            
+            # Run the vLLM server
             {vllm_command}
             '
             '''

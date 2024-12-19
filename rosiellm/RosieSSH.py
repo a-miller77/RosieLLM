@@ -8,6 +8,7 @@ from select import select
 from threading import Lock
 from getpass import getpass
 from typing import Tuple, Optional
+import logging
 
 import paramiko
 from socket import gaierror

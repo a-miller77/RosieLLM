@@ -4,11 +4,15 @@ import time
 import os
 import textwrap
 import secrets
+import logging
 
 from typing import Tuple
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 class JobManager:
-    def __init__(self, job_name='RosieLLM', rosie_ssh: RosieSSH = None):
+    def __init__(self, job_name='RosieLLM', rosie_ssh: RosieSSH = None, **kwargs):
         self.job_name = job_name.strip()
         if rosie_ssh:
             if not rosie_ssh.ssh_client:
@@ -22,6 +26,38 @@ class JobManager:
         self.PORT = 1234 #TODO scan for open port
         self.node_url = None
         self.BASE_URL = "/node/{node_url}.hpc.msoe.edu/{port}"
+
+        self.config_dict = {
+            'job_name': job_name,
+            'partition': 'teaching',
+            'nodes': 1,
+            'gpus': 2,
+            'cpus_per_gpu': 2,
+            'out_file': f'/data/ai_club/RosieLLM/out/{self.user}_out.txt',
+            'days': 0,
+            'hours': 3,
+            'minutes': 0,
+            'container': "/data/ai_club/RosieLLM/RosieLLM.sif",
+            'model': "NousResearch/Meta-Llama-3-8B-Instruct",
+            'dtype': "half",
+            'max_model_len': "2048",
+            'download_dir': "/data/ai_club/RosieLLM/models", #TODO: Change to tmp dir
+            'host': "0.0.0.0",
+            'port': str(self.PORT),
+            'api_key': self.token,
+            'middleware': 'proxy_middleware.proxy_authentication', #TODO: remove once proxy server implemented
+            'vllm_base_url': self.BASE_URL.format(node_url="$SLURMD_NODENAME", port=self.PORT)
+        }
+
+        if kwargs:
+            logger.warning("Providing additional arguments the the job manager might cause unexpected behavior.")
+            for key, value in kwargs.items():
+                if key in self.config_dict:
+                    previous = self.config_dict[key]
+                    self.config_dict[key] = value
+                    logger.info(f"Updated {key} from {previous} > {value}")
+                else:
+                    logger.warning(f"Invalid argument (ignored): {'{'}{key}:{value}{'}'}")
     
     # def __del__(self):
         # self.rosie_ssh.execute_instance_command(f'scancel -n {self.job_name}')
@@ -35,8 +71,8 @@ class JobManager:
             sbatch_script = self.create_llm_sbatch()
             local_script_path, remote_script_path = self.create_temp_sbatch_script(sbatch_script)
 
-            print(f"Local SBATCH Script Path: {local_script_path}")
-            print(f"Remote SBATCH Script Path: {remote_script_path}")
+            logger.debug(f"Local SBATCH Script Path: {local_script_path}")
+            logger.debug(f"Remote SBATCH Script Path: {remote_script_path}")
 
             # Copy the SBATCH script directly to the remote server
             self.rosie_ssh.copy_file_to_remote(local_script_path, remote_script_path)
@@ -51,7 +87,7 @@ class JobManager:
 
         except Exception as e:
             #TODO: improve(?)
-            print(f"An error occurred: {e}")
+            logger.error(f"An error occurred: {e}")
 
     def create_temp_sbatch_script(self, sbatch_script: str) -> Tuple[str, str]:
         try:
@@ -69,7 +105,7 @@ class JobManager:
             return local_script_path, remote_script_path
 
         except Exception as e:
-            print(f"Failed to create temporary SBATCH script: {e}")
+            logger.error(f"Failed to create temporary SBATCH script: {e}")
             raise
 
     def get_node_url(self, job_name, timeout: int = 20) -> str:
@@ -99,39 +135,17 @@ class JobManager:
         if node_url is None:
             raise TimeoutError(f"Failed to find job URL for job {job_name} in {timeout} seconds.")
 
-        print(f"Job URL Found")
+        print(f"Job URL Found: {node_url}")
         return node_url
 
-    def create_llm_sbatch(self) -> str:
-        self.config_dict = {
-            'name': "RosieLLM",
-            'partition': 'teaching',
-            'nodes': 1,
-            'gpus': 2,
-            'cpus_per_gpu': 2,
-            'out_file': f'/data/ai_club/RosieLLM/out/{self.user}_out.txt',
-            'days': 0,
-            'hours': 3,
-            'minutes': 0,
-            'container': "/data/ai_club/RosieLLM/RosieLLM.sif",
-            'model_name': "NousResearch/Meta-Llama-3-8B-Instruct",
-            'dtype': "half",
-            'max_model_len': "2048",
-            'download_dir': "/data/ai_club/RosieLLM/models", #TODO: Change to tmp dir
-            'host': "0.0.0.0",
-            'port': str(self.PORT),
-            'api_key': self.token,
-            'middleware': 'proxy_middleware.proxy_authentication', #TODO: remove once proxy server implemented
-            'vllm_base_url': self.BASE_URL.format(node_url="$SLURMD_NODENAME", port=self.PORT)
-        }
-                
+    def create_llm_sbatch(self) -> str:                
         cfg = self.config_dict
         time = f'{cfg["days"]}-{cfg["hours"]}:{cfg["minutes"]}:00'
 
         # Constructing the command using an f-string with curly braces around parameters
         vllm_command = (
             f"python -m vllm.entrypoints.openai.api_server "
-            f"--model {cfg['model_name']} "
+            f"--model {cfg['model']} "
             f"--dtype {cfg['dtype']} "
             f"-tp {cfg['gpus']} "
             # f"--max-model-len {cfg['max_model_len']} " #is this necessary?
@@ -148,11 +162,11 @@ class JobManager:
         )
 
         # Print the constructed command
-        print(vllm_command)
+        logger.debug(vllm_command)
 
         sbatch_script = textwrap.dedent(
 f'''            #!/bin/bash
-            #SBATCH --job-name='{cfg['name']}'
+            #SBATCH --job-name='{cfg['job_name']}'
             #SBATCH --partition={cfg['partition']}
             #SBATCH --nodes={cfg['nodes']}
             #SBATCH --gpus={cfg['gpus']}

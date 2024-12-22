@@ -7,7 +7,7 @@ import requests
 import logging
 
 MANAGEMENT_NODES = ['dh-mgmt1', 'dh-mgmt2', 'dh-mgmt3', 'dh-mgmt4']
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
 class RosieLLM:
@@ -22,6 +22,7 @@ class RosieLLM:
                                 ] = None,
                  use_as_openai_client: bool = True,
                  async_client: bool = False,
+                 log_level: Union[int, str] = logging.WARN,
                  **kwargs
                  ) -> 'RosieLLM':
         """
@@ -35,6 +36,7 @@ class RosieLLM:
             return_openai_client (bool): If True, the RosieLLM object can be used as if it were an OpenAI client.
             async_client (bool): If True, the OpenAI client will be asynchronous.
         """
+        logger.setLevel(log_level)
         if not management_node or management_node not in MANAGEMENT_NODES:
             # Choose a random management node
             if management_node not in MANAGEMENT_NODES:
@@ -54,12 +56,12 @@ class RosieLLM:
         self.rosie_web_path = f"https://dh-ood.hpc.msoe.edu{vllm_route}"
         self.isRunning = False
 
-        # if not self.manager.node_url:
-        #     logger.error("Server failed to launch.")
-        # else:
-        #     print("Job has been launched, waiting for server to start (this can take over a minute)...")
-        #     logger.info("See your job progress here:")
-        #     logger.info(f"https://dh-ood.hpc.msoe.edu/pun/sys/dashboard/files/fs//data/ai_club/RosieLLM/out/{self.user}_out.txt")
+        if not self.manager.node_url:
+            logger.error("Server failed to launch.")
+        else:
+            print("Job has been launched, waiting for server to start (this can take over a minute)...")
+            logger.info("See your job progress here:")
+            logger.info(f"https://dh-ood.hpc.msoe.edu/pun/sys/dashboard/files/fs//data/ai_club/RosieLLM/out/{self.user}_out.txt")
 
         base_url = f"{self.rosie_web_path}/v1"
         default_headers = {
@@ -105,10 +107,10 @@ class RosieLLM:
                     logger.error("Server cannot be accessed.")
             except requests.exceptions.RequestException as e:
                 self.isRunning = False
-                logger.warning(f"Health check failed, Server not running: {e}")
+                logger.info(f"Health check failed, Server not running: {e}")
             except Exception as e:
                 self.isRunning = False
-                logger.error(f"Unexpected error during health check: {e}")
+                logger.critical(f"Unexpected error during health check: {e}")
 
     def __getattr__(self, name):
         # if _is_client is True, return attributes of the http_client when requested

@@ -7,6 +7,8 @@ Rosie is a high-performance computing (HPC) system designed primarily for large-
 This means that students, faculty, and researchers at MSOE can focus on building apps and conducting experiments, without the headaches of HPC workflows, empowering users to build and research with LLM's in a simple and efficient way.
 
 ### Disclaimer
+This project is being deprecated soon. See [Osire](https://github.com/a-miller77/Osire) for the updated platform.
+
 RosieLLM is currently in early beta. This means that drastic changes can happen, error checking is not particularly robust, and you can definitely prevent the system from running by tweaking arguments (see below). For safe, guaranteed results, stick with the default parameters. Additionally, this library is currently only supported on Windows. It will not work on Mac or locally on Rosie as of now.
 
 ## Features
@@ -103,7 +105,7 @@ If you don't recognize these, likely don't change them. See [vLLM server argumen
 
 ## Contributing
 
-Due to the current stage of the project, please reach out to me over teams before writing any contributions. 
+This version of the project will be deprecated soon. See [Osire](https://github.com/a-miller77/Osire) for the updated platform.
 
 ## License
 
